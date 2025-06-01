@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Voice Chatbot</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    button { font-size: 20px; padding: 10px 20px; }
+  </style>
+</head>
+<body>
+  <h1>Voice Chatbot</h1>
+  <button id="recordBtn">🎤 Start Speaking</button>
+
+  <script>
+    const recordBtn = document.getElementById('recordBtn');
+    let mediaRecorder;
+    let chunks = [];
+
+    recordBtn.onclick = async () => {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        // Stop recording
+        mediaRecorder.stop();
+        recordBtn.textContent = '🎤 Start Speaking';
+        return;
+      }
+
+      // Start recording
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+
+      chunks = [];
+      mediaRecorder.ondataavailable = e => chunks.push(e.data);
+
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const formData = new FormData();
+        formData.append('audio', blob, 'input.webm');
+
+        try {
+          const res = await fetch('/process_audio', {
+            method: 'POST',
+            body: formData
+          });
+
+          if (!res.ok) {
+            alert("Error processing audio");
+            return;
+          }
+
+          const audioBlob = await res.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          audio.play();
+        } catch (err) {
+          console.error(err);
+          alert("Failed to send audio");
+        }
+
+        chunks = [];
+      };
+
+      mediaRecorder.start();
+      recordBtn.textContent = '🛑 Stop';
+    };
+  </script>
+</body>
+</html>
