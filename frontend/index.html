@@ -1,36 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>StoryBot</title>
 </head>
 <body>
   <h1>StoryBot</h1>
   <button id="recordBtn">🎤 Speak</button>
+
   <script>
     const btn = document.getElementById('recordBtn');
     let mediaRecorder, chunks = [];
+    let recording = false;
+
     btn.onclick = async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-      mediaRecorder.ondataavailable = e => chunks.push(e.data);
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        const formData = new FormData();
-        formData.append('audio', blob);
-        const res = await fetch('/process_audio', { method: 'POST', body: formData });
-        const audioBlob = await res.blob();
-        const url = URL.createObjectURL(audioBlob);
-        new Audio(url).play();
+      if (!recording) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
         chunks = [];
-      };
-      mediaRecorder.start();
-      btn.textContent = '🛑 Stop';
-      btn.onclick = () => {
+
+        mediaRecorder.ondataavailable = e => chunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(chunks, { type: 'audio/webm' });
+          const formData = new FormData();
+          formData.append('audio', blob);
+
+          try {
+            const res = await fetch('/process_audio', { method: 'POST', body: formData });
+            if (!res.ok) {
+              alert('Error processing audio');
+              btn.textContent = '🎤 Speak';
+              recording = false;
+              return;
+            }
+            const audioBlob = await res.blob();
+            const url = URL.createObjectURL(audioBlob);
+            new Audio(url).play();
+          } catch (err) {
+            alert('Error sending audio: ' + err.message);
+          }
+          chunks = [];
+          btn.textContent = '🎤 Speak';
+          recording = false;
+        };
+
+        mediaRecorder.start();
+        btn.textContent = '🛑 Stop';
+        recording = true;
+      } else {
         mediaRecorder.stop();
-        btn.textContent = '🎤 Speak';
-      };
+      }
     };
   </script>
 </body>

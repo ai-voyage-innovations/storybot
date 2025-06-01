@@ -9,8 +9,10 @@ import time
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 
 # Load Whisper and TTS once
-whisper_model = whisper.load_model("base")
-tts_engine = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False)
+whisper_model = whisper.load_model("small.en")
+
+# tts_engine = TTS(model_name="tts_models/en/ljspeech/tacotron2-DDC", progress_bar=False)
+tts_engine = TTS(model_name="tts_models/en/ljspeech/fast_pitch", progress_bar=False)
 
 @app.route('/')
 def index():
@@ -42,22 +44,21 @@ def process_audio():
             step5 = time.time()
             print(f"[LOG] Speech synthesis: {step5 - step4:.2f}s")
 
-            print(f"[LOG] Total processing time: {step5 - start_time:.2f}s")
+            print(f"[LOG] TOTAL PROCESSING TIME: {step5 - start_time:.2f}s")
 
             return send_file(mp3_path, mimetype='audio/mpeg')
     except Exception as e:
         app.logger.error("Error processing audio: %s", str(e))
         return str(e), 500
 
-def convert_webm_to_wav(input_path):
-    # Add stopwatch
-    
+def convert_webm_to_wav(input_path):    
     output_path = tempfile.mktemp(suffix=".wav")
     subprocess.run(['ffmpeg', '-y', '-i', input_path, output_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return output_path
 
 def transcribe_audio(audio_path):
-    result = whisper_model.transcribe(audio_path)
+    # result = whisper_model.transcribe(audio_path)
+    result = whisper_model.transcribe(audio_path, beam_size=1, fp16=False, language='en')
     return result['text']
 
 def generate_response(text):
