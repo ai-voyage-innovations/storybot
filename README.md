@@ -16,6 +16,9 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Pushing changes
+GIT_SSH_COMMAND='ssh -i /$GIT_HOME/my' git push origin main
+
 ## Run
 ```bash
 python backend/app.py
