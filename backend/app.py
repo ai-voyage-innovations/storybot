@@ -5,6 +5,8 @@ import tempfile
 import subprocess
 import os
 import time
+import uuid
+from Logger import AppLogger
 
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 
@@ -20,35 +22,36 @@ def index():
 
 @app.route('/process_audio', methods=['POST'])
 def process_audio():
+    logger = AppLogger("AudioProcessing", id=str(uuid.uuid4()))
     try:
         start_time = time.time()
         audio_file = request.files['audio']
         with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as webm_temp:
             audio_file.save(webm_temp.name)
             step1 = time.time()
-            print(f"[LOG] Audio saved: {step1 - start_time:.2f}s")
+            logger.info(f"Audio saved: {step1 - start_time:.2f}s")
 
             wav_path = convert_webm_to_wav(webm_temp.name)
             step2 = time.time()
-            print(f"[LOG] WebM to WAV: {step2 - step1:.2f}s")
+            logger.info(f"WebM to WAV: {step2 - step1:.2f}s")
 
             text = transcribe_audio(wav_path)
             step3 = time.time()
-            print(f"[LOG] Transcription: {step3 - step2:.2f}s")
+            logger.info(f"Transcription: {step3 - step2:.2f}s")
 
             response = generate_response(text)
             step4 = time.time()
-            print(f"[LOG] Response generation: {step4 - step3:.2f}s")
+            logger.info(f"Response generation: {step4 - step3:.2f}s")
 
             mp3_path = synthesize_speech(response)
             step5 = time.time()
-            print(f"[LOG] Speech synthesis: {step5 - step4:.2f}s")
+            logger.info(f"Speech synthesis: {step5 - step4:.2f}s")
 
-            print(f"[LOG] TOTAL PROCESSING TIME: {step5 - start_time:.2f}s")
+            logger.info(f"TOTAL PROCESSING TIME: {step5 - start_time:.2f}s")
 
             return send_file(mp3_path, mimetype='audio/mpeg')
     except Exception as e:
-        app.logger.error("Error processing audio: %s", str(e))
+        logger.error("ERROR PROCESSING INPUT: %s", str(e))
         return str(e), 500
 
 def convert_webm_to_wav(input_path):    
